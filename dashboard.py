@@ -51,7 +51,7 @@ def main():
     st.title(APP_TITLE)
     st.caption(APP_SUBTITLE)
 
-    df = pd.read_csv('output.csv', sep="\t")
+    df = pd.read_csv('portland-crime-data.csv', sep="\t")
 
     df['Neighborhood'] = df['Neighborhood'].fillna("") 
     neighborhood_counts = df["Neighborhood"].value_counts().reset_index()
