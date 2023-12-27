@@ -86,7 +86,7 @@ def display_map(df):
     return neighborhood_name
 
 def display_occurtime(df, neighborhood_name, top_offense_types):
-    st.write("### Crime Occurrence times")
+    st.write("### Occurrence time")
 
     if neighborhood_name:
         df = df[df['Neighborhood'] == neighborhood_name]
@@ -100,9 +100,38 @@ def display_occurtime(df, neighborhood_name, top_offense_types):
     plt.xlabel('', color='white')
     plt.ylabel('Hour of Occurrence', color='white')
     plt.title('Crime Occurrence time for Each Type')
-    plt.yticks(ha='right', ticks=range(1, 24), color='white')  
+    plt.yticks(ha='right', ticks=range(0, 24), color='white')  
     plt.xticks(rotation=45, ha='right', color='white')  
     
+    st.pyplot(plt)
+
+
+def display_heatmap(df):
+    st.write("### Heatmap of Crime Records")
+
+    top_neighborhoods = df.groupby('Neighborhood')['Count'].sum().nlargest(15).index.tolist()
+    top_offense_types = df.groupby('OffenseType')['Count'].sum().nlargest(15).index.tolist()
+
+    heatmap_data = df[(df['Neighborhood'].isin(top_neighborhoods)) & (df['OffenseType'].isin(top_offense_types))]
+    heatmap_matrix = heatmap_data.pivot_table(values='Count', index='Neighborhood', columns='OffenseType', aggfunc=np.sum, fill_value=0)
+
+    figure = plt.figure(figsize=(14, 10))
+    figure.patch.set_alpha(0.0)
+
+    # Create the heatmap using seaborn
+    heatmap = sns.heatmap(heatmap_matrix, annot=True, cmap="YlGnBu", fmt='g')
+
+    # Set the color of the numbers in the color bar to white
+    cbar = heatmap.collections[0].colorbar
+    cbar.set_ticks([0, 1000, 2000, 3000, 4000, 5000, 6000, 7000])  # Adjust the tick positions as needed
+    cbar.set_ticklabels([str(label) for label in [0, 1000, 2000, 3000, 4000, 5000, 6000, 7000]])
+    cbar.ax.tick_params(axis='y', colors='white')  # Set the color of the tick labels to white
+
+    plt.title('Heatmap of Crime Records by Neighborhood and Offense Type', color='white')
+    plt.xlabel('Top 15 Offense Types', color='white')
+    plt.ylabel('Top 15 Neighborhoods', color='white')
+    plt.yticks(ha='right', color='white')
+    plt.xticks(ha='right', color='white')
     st.pyplot(plt)
 
 def main():
@@ -129,6 +158,7 @@ def main():
     
     display_statistics(offensetype_counts, neighborhood_name, metric_title)
     display_occurtime(occur_times, neighborhood_name, top_offense_types_neighborhood)
+    display_heatmap(offensetype_counts)
     
 if __name__ == "__main__":
         main()
