@@ -1,6 +1,5 @@
 import pandas as pd
 import folium
-import json
 import streamlit as st
 from streamlit_folium import st_folium
 from datetime import datetime
@@ -11,6 +10,7 @@ import seaborn as sns
 session_state = st.session_state
 APP_TITLE =  'Portland Crime Analysis'
 APP_SUBTITLE = 'Source: Portland Police Department'
+st.set_page_config(page_title=APP_TITLE, page_icon=":bar_chart:", layout="wide")
 
 def prepare_dataset(df):
     df = df.dropna(subset=['Neighborhood'])
@@ -25,7 +25,7 @@ def format_time(unformatted_time):
 
 def add_sidebar_neighborhood_filter(df, selected_map=None):
     unique_neighborhoods = df['Neighborhood'].unique().tolist()
-    unique_neighborhoods.insert(0, "All")  # Add "All" option at the beginning
+    unique_neighborhoods.insert(0, "All")  
     default_value = selected_map if selected_map else unique_neighborhoods[0]
     neighborhood_filter = st.sidebar.selectbox("Neighborhood", unique_neighborhoods, index=unique_neighborhoods.index(default_value))
     if neighborhood_filter == "All":
@@ -34,14 +34,14 @@ def add_sidebar_neighborhood_filter(df, selected_map=None):
 
 def add_sidebar_crime_filter(df):
     unique_offense_types = df['OffenseType'].unique().tolist()
-    unique_offense_types.insert(0, "All")  # Add "All" option at the beginning
+    unique_offense_types.insert(0, "All") 
     default_value = unique_offense_types[0]
     crime_filter = st.sidebar.selectbox("Offense Types", unique_offense_types, index=unique_offense_types.index(default_value))
     if crime_filter == "All":
         crime_filter = ""
     return crime_filter
 
-def display_statistics(df, neighborhood_name, metric_title):
+def display_record_number(df, neighborhood_name):
     total = 0  
     df_offensetype = df.groupby('OffenseType')['Count'].sum().reset_index()
     total_neighborhood = df_offensetype['Count'].sum()
@@ -58,8 +58,8 @@ def display_statistics(df, neighborhood_name, metric_title):
         percentage_difference = ((total_neighborhood - average) / average) * 100
         total=total_neighborhood
 
-    st.metric(metric_title, '{:,}'.format(total), delta=f"{percentage_difference:.2f}%", delta_color="inverse")
-  
+    st.metric('Number of Reports', '{:,}'.format(total), delta=f"{percentage_difference:.2f}%", delta_color="inverse")
+    
 def display_crime_table(df, neighborhood_name):
     st.write("### Crime Occurrences by Offense Type")
 
@@ -93,7 +93,6 @@ def display_map(df):
     )
     choropleth.geojson.add_to(map)
 
-    # Resetting the index to make sure 'Neighborhood' is a column
     df = df.reset_index()
 
     for feature in choropleth.geojson.data['features']:
@@ -114,9 +113,6 @@ def display_map(df):
     selected_neighborhood = add_sidebar_neighborhood_filter(df, neighborhood_name)
     return selected_neighborhood
 
-    #return selected_neighborhood
-
-
 def display_occurtime(df, neighborhood_name, top_offense_types):
     st.write("### Occurrence time")
 
@@ -125,18 +121,26 @@ def display_occurtime(df, neighborhood_name, top_offense_types):
 
     df['OccurHour'] = pd.to_datetime(df['OccurTime']).dt.hour
 
+    df_top_offenses = df[df['OffenseType'].isin(top_offense_types[:5])]
+
+    df_grouped = df_top_offenses.groupby(['OccurHour', 'OffenseType']).size().reset_index(name='Count')
+
     figure = plt.figure(figsize=(12, 8))
     figure.patch.set_alpha(0.0)
-    sns.set(style="darkgrid")
-    sns.boxplot(x='OffenseType', y='OccurHour', data=df[df['OffenseType'].isin(top_offense_types)], width=0.5)
-    plt.xlabel('', color='white')
-    plt.ylabel('Hour of Occurrence', color='white')
-    plt.title('Crime Occurrence time for Each Type')
-    plt.yticks(ha='right', ticks=range(0, 24), color='white')  
-    plt.xticks(rotation=45, ha='right', color='white')  
-    
-    st.pyplot(plt)
+    sns.set(style="whitegrid") 
 
+    sns.lineplot(x='OccurHour', y='Count', hue='OffenseType', data=df_grouped, linewidth=2)
+
+    plt.xlabel('Hour of Occurrence', color='white')
+    plt.ylabel('Number of Occurrences', color='white')
+    plt.title('Crime Occurrence time for Top 5 Offense Types')
+    plt.yticks(rotation=45, ha='right', color='white')
+    plt.xticks(np.arange(1, 25, 1), ha='right', color='white')
+
+    legend = plt.legend(title='Offense Type')
+    legend.get_title().set_color('white')
+
+    st.pyplot(plt)
 
 def display_heatmap(df):
     st.write("### Heatmap of Crime Records")
@@ -150,14 +154,12 @@ def display_heatmap(df):
     figure = plt.figure(figsize=(14, 10))
     figure.patch.set_alpha(0.0)
 
-    # Create the heatmap using seaborn
     heatmap = sns.heatmap(heatmap_matrix, annot=True, cmap="YlGnBu", fmt='g')
 
-    # Set the color of the numbers in the color bar to white
     cbar = heatmap.collections[0].colorbar
-    cbar.set_ticks([0, 1000, 2000, 3000, 4000, 5000, 6000, 7000])  # Adjust the tick positions as needed
+    cbar.set_ticks([0, 1000, 2000, 3000, 4000, 5000, 6000, 7000])  
     cbar.set_ticklabels([str(label) for label in [0, 1000, 2000, 3000, 4000, 5000, 6000, 7000]])
-    cbar.ax.tick_params(axis='y', colors='white')  # Set the color of the tick labels to white
+    cbar.ax.tick_params(axis='y', colors='white')  #
 
     plt.title('Heatmap of Crime Records by Neighborhood and Offense Type', color='white')
     plt.xlabel('Top 15 Offense Types', color='white')
@@ -167,9 +169,6 @@ def display_heatmap(df):
     st.pyplot(plt)
 
 def main():
-    st.set_page_config(page_title=APP_TITLE, page_icon=":bar_chart:",layout="wide")
-    st.title(APP_TITLE)
-    st.caption(APP_SUBTITLE)
     col1, col2 = st.columns([2, 1])
 
     df = pd.read_csv('portland-crime-data.csv', sep="\t")
@@ -189,13 +188,14 @@ def main():
 
     occur_times = df.groupby(['Neighborhood', 'OffenseType', 'OccurTime']).size().reset_index(name='Count')
 
-    metric_title = f'Number of Reports'
-
     with col1:
         neighborhood_name=display_map(neighborhood_counts)
     with col2:
         top_offense_types_neighborhood = display_crime_table(offensetype_counts, neighborhood_name)
-    display_statistics(offensetype_counts, neighborhood_name, metric_title)
+    
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col1:
+        display_record_number(offensetype_counts, neighborhood_name)
 
     col3, col4 = st.columns([1, 1])
     with col3:
