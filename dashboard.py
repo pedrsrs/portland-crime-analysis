@@ -12,6 +12,10 @@ APP_TITLE =  'Portland Crime Analysis'
 APP_SUBTITLE = 'Source: Portland Police Department'
 st.set_page_config(page_title=APP_TITLE, page_icon=":bar_chart:", layout="wide")
 
+with open('styles.css') as f:
+    st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+
+
 def prepare_dataset(df):
     df = df.dropna(subset=['Neighborhood'])
     df['Neighborhood'] = df['Neighborhood'].fillna("")
