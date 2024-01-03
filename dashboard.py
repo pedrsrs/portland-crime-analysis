@@ -59,6 +59,17 @@ def display_record_number(df, neighborhood_name):
         total=total_neighborhood
 
     st.metric('Number of Reports', '{:,}'.format(total), delta=f"{percentage_difference:.2f}%", delta_color="inverse")
+
+def occurences_per_day(df, neighborhood_name):
+    if neighborhood_name:
+        df = df[df['Neighborhood'] == neighborhood_name]
+    else:
+        df = df.groupby(['OffenseType', 'Neighborhood'])['Count'].sum().reset_index()
+    
+    df = df.groupby('OffenseType')['Count'].sum().reset_index()
+    total_crime_count = df['Count'].sum()
+    average_per_day = total_crime_count/3204
+    st.metric('Average Occurences per Day', f"{average_per_day:.2f}")
     
 def display_crime_table(df, neighborhood_name):
     st.write("### Crime Occurrences by Offense Type")
@@ -196,6 +207,9 @@ def main():
     col1, col2, col3 = st.columns([1, 1, 1])
     with col1:
         display_record_number(offensetype_counts, neighborhood_name)
+
+    with col2:
+        occurences_per_day(offensetype_counts, neighborhood_name)
 
     col3, col4 = st.columns([1, 1])
     with col3:
