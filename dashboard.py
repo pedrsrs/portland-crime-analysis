@@ -184,7 +184,8 @@ def display_heatmap(df):
     st.pyplot(plt)
 
 def main():
-    col1, col2 = st.columns([2, 1])
+    st.title("Portland Crime Data Analysis")
+    st.write("Public data from Oregon Police Official Website, from years 2015 - 2023", color="gray")
 
     df = pd.read_csv('portland-crime-data.csv', sep="\t")
     df = prepare_dataset(df)
@@ -203,6 +204,7 @@ def main():
 
     occur_times = df.groupby(['Neighborhood', 'OffenseType', 'OccurTime']).size().reset_index(name='Count')
 
+    col1, col2 = st.columns([3, 2])
     with col1:
         neighborhood_name=display_map(neighborhood_counts)
     with col2:
@@ -214,11 +216,13 @@ def main():
 
     with col2:
         occurences_per_day(offensetype_counts, neighborhood_name)
-
-    col3, col4 = st.columns([1, 1])
-    with col3:
+    st.markdown("----")
+    col1, col2, col3 = st.columns([1, 5, 1])
+    with col2:
         display_occurtime(occur_times, neighborhood_name, top_offense_types_neighborhood)
-    with col4:
+    st.markdown("----")
+    col1, col2, col3 = st.columns([1, 5, 1])
+    with col2:
         display_heatmap(offensetype_counts)
     
 if __name__ == "__main__":
