@@ -2,13 +2,6 @@ div[data-testid="stMetric"] {
     padding: 20px 20px 20px 70px;
     background-color: rgb(39, 39, 49); 
 }
-.stApp {
-    background-color: #0E1118;
-    color: #eee;
-}
-.stSidebar {
-    background-color: #0E1118;
-}
 .stTable {
     text-align: left;
 }
