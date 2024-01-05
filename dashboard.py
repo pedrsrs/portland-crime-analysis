@@ -64,6 +64,15 @@ def display_record_number(df, neighborhood_name):
 
     st.metric('Number of Reports', '{:,}'.format(total), delta=f"{percentage_difference:.2f}%", delta_color="inverse")
 
+def get_neighborhood_rank(df, neighborhood_name):
+    neighborhood_ranking = df.groupby('Neighborhood')['Count'].sum().sort_values(ascending=False).reset_index()
+    neighborhood_rank = neighborhood_ranking.index[neighborhood_ranking['Neighborhood'] == neighborhood_name].tolist()
+
+    if neighborhood_rank:
+        return neighborhood_rank[0] + 1 
+    else:
+        return None
+
 def occurences_per_day(df, neighborhood_name):
     if neighborhood_name:
         df = df[df['Neighborhood'] == neighborhood_name]
@@ -126,10 +135,11 @@ def display_map(df):
         neighborhood_name = st_map['last_active_drawing']['properties']['name']
 
     selected_neighborhood = add_sidebar_neighborhood_filter(df, neighborhood_name)
+
     return selected_neighborhood
 
 def display_occurtime(df, neighborhood_name, top_offense_types):
-    st.write("### Occurrence time")
+    st.write("### Crime Occurrence Times")
 
     if neighborhood_name:
         df = df[df['Neighborhood'] == neighborhood_name]
@@ -149,7 +159,7 @@ def display_occurtime(df, neighborhood_name, top_offense_types):
     plt.xlabel('Hour of Occurrence', color='white')
     plt.ylabel('Number of Occurrences', color='white')
     plt.title('Crime Occurrence time for Top 5 Offense Types')
-    plt.yticks(rotation=45, ha='right', color='white')
+    plt.yticks(ha='right', color='white')
     plt.xticks(np.arange(1, 25, 1), ha='right', color='white')
 
     legend = plt.legend(title='Offense Type')
@@ -186,40 +196,61 @@ def display_heatmap(df):
 def main():
     st.title("Portland Crime Data Analysis")
     st.write("Public data from Oregon Police Official Website, from years 2015 - 2023", color="gray")
+    st.markdown("---")
 
     df = pd.read_csv('portland-crime-data.csv', sep="\t")
     df = prepare_dataset(df)
+    neighborhood_counts = df["Neighborhood"].value_counts().reset_index()
+    neighborhood_counts.columns = ["Neighborhood", "Count"]
 
     df['OccurTime'] = df['OccurTime'].apply(format_time)
+
+    col1, col2 = st.columns([3, 2])
+
+    st.sidebar.header("Filters")
+    st.sidebar.markdown("---")
+    with col1:
+        neighborhood_name=display_map(neighborhood_counts)
 
     crime_filter=add_sidebar_crime_filter(df)
     if crime_filter:
         df = df[df['OffenseType'] == crime_filter]
 
-    neighborhood_counts = df["Neighborhood"].value_counts().reset_index()
-    neighborhood_counts.columns = ["Neighborhood", "Count"]
-
     offensetype_counts = df["Neighborhood"].value_counts().reset_index()
     offensetype_counts = df.groupby(['Neighborhood', 'OffenseType']).size().reset_index(name='Count')
 
     occur_times = df.groupby(['Neighborhood', 'OffenseType', 'OccurTime']).size().reset_index(name='Count')
-
-    col1, col2 = st.columns([3, 2])
-    with col1:
-        neighborhood_name=display_map(neighborhood_counts)
+    
     with col2:
         top_offense_types_neighborhood = display_crime_table(offensetype_counts, neighborhood_name)
     
     col1, col2, col3 = st.columns([1, 1, 1])
     with col1:
-        display_record_number(offensetype_counts, neighborhood_name)
+        neighborhood_rank = get_neighborhood_rank(offensetype_counts, neighborhood_name)
+        if neighborhood_rank is not None:
+            st.metric('Neighborhood Ranking by Crime Records', f"{neighborhood_rank}/{len(offensetype_counts['Neighborhood'].unique())}")
+        else:
+            st.metric('Neighborhood Ranking by Crime Records', "Select a Neighborhood")
 
     with col2:
+        display_record_number(offensetype_counts, neighborhood_name)
+
+    with col3: 
         occurences_per_day(offensetype_counts, neighborhood_name)
-    st.markdown("----")
+        
+    st.sidebar.markdown("----")
+    st.sidebar.header("Linechart Crime Types")
+
+    selected_offense_types = st.sidebar.multiselect("Select up to 5 Offense Types", df['OffenseType'].unique())
+
     col1, col2, col3 = st.columns([1, 5, 1])
+
     with col2:
-        display_occurtime(occur_times, neighborhood_name, top_offense_types_neighborhood)
+        if selected_offense_types:
+            df_filtered = df[df['OffenseType'].isin(selected_offense_types)]
+            display_occurtime(df_filtered, neighborhood_name, selected_offense_types)
+        else:
+            display_occurtime(occur_times, neighborhood_name, top_offense_types_neighborhood)
     st.markdown("----")
     col1, col2, col3 = st.columns([1, 5, 1])
     with col2:
