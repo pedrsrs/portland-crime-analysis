@@ -8,3 +8,11 @@ div[data-testid="stMetric"] {
 span {
     margin: 0;
 }
+h3 {
+    text-align: center;
+}
+.contact {
+    bottom: 0;
+    color: rgb(101, 105, 110) !important;
+    text-decoration: none !important;
+}
